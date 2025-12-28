@@ -1,0 +1,14 @@
+node_modules/
+.env
+*.log
+.DS_Store
+dist/
+build/
+.vscode/
+.idea/
+*.mp4
+*.mov
+*.avi
+temp/
+output/
+

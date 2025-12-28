@@ -1,0 +1,31 @@
+{
+  "name": "ai-youtube-automation",
+  "version": "1.0.0",
+  "description": "AI YouTube Shorts 자동 생성 및 업로드 시스템",
+  "main": "index.js",
+  "scripts": {
+    "start": "node scripts/daily-video-generator.js",
+    "test": "node scripts/test-apis.js",
+    "auth:youtube": "node scripts/youtube-auth-helper.js"
+  },
+  "keywords": [
+    "youtube",
+    "ai",
+    "automation",
+    "n8n",
+    "gemini",
+    "veo3"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "googleapis": "^144.0.0",
+    "dotenv": "^16.4.5",
+    "axios": "^1.7.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10"
+  }
+}
+

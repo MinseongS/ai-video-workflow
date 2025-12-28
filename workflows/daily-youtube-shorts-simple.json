@@ -1,0 +1,117 @@
+{
+  "name": "일일 YouTube 쇼츠 자동 생성 (간단 버전)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "매일 오전 9시 실행",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "command": "node",
+        "arguments": "={{ $env.PROJECT_PATH || '/Users/minseong/project/ai-youtube' }}/scripts/daily-video-generator.js"
+      },
+      "id": "execute-script",
+      "name": "영상 생성 및 업로드 실행",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 결과 파싱\nconst output = $input.item.json.stdout || '';\nconst error = $input.item.json.stderr || '';\n\nif (error && error.length > 0) {\n  return {\n    json: {\n      success: false,\n      error: error\n    }\n  };\n}\n\n// 성공 메시지 확인\nconst success = output.includes('성공적으로 완료되었습니다') || output.includes('success');\n\nreturn {\n  json: {\n    success: success,\n    output: output,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "parse-result",
+      "name": "결과 파싱",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "success-check",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-success",
+      "name": "성공 확인",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [850, 300]
+    }
+  ],
+  "connections": {
+    "매일 오전 9시 실행": {
+      "main": [
+        [
+          {
+            "node": "영상 생성 및 업로드 실행",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "영상 생성 및 업로드 실행": {
+      "main": [
+        [
+          {
+            "node": "결과 파싱",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "결과 파싱": {
+      "main": [
+        [
+          {
+            "node": "성공 확인",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}
+
