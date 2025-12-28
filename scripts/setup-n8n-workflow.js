@@ -76,15 +76,30 @@ class N8NWorkflowSetup {
    */
   async createWorkflow(workflowData) {
     try {
+      // n8n API가 요구하는 형식으로 변환 (read-only 필드 제외)
+      const payload = {
+        name: workflowData.name,
+        nodes: workflowData.nodes,
+        connections: workflowData.connections,
+        settings: workflowData.settings || {},
+        staticData: workflowData.staticData || null
+        // tags, triggerCount, updatedAt, versionId는 read-only이므로 제외
+      };
+      
       const response = await axios.post(
         `${this.baseUrl}/api/v1/workflows`,
-        workflowData,
+        payload,
         { headers: this.getHeaders() }
       );
       return response.data;
     } catch (error) {
       if (error.response?.status === 401) {
         throw new Error('n8n API 인증 실패. N8N_API_KEY를 확인하세요.');
+      }
+      if (error.response?.status === 400) {
+        console.error('요청 데이터:', JSON.stringify(workflowData, null, 2));
+        console.error('에러 응답:', JSON.stringify(error.response.data, null, 2));
+        throw new Error(`잘못된 요청: ${JSON.stringify(error.response.data)}`);
       }
       throw error;
     }
@@ -95,15 +110,30 @@ class N8NWorkflowSetup {
    */
   async updateWorkflow(workflowId, workflowData) {
     try {
+      // n8n API가 요구하는 형식으로 변환 (read-only 필드 제외)
+      const payload = {
+        name: workflowData.name,
+        nodes: workflowData.nodes,
+        connections: workflowData.connections,
+        settings: workflowData.settings || {},
+        staticData: workflowData.staticData || null
+        // tags, triggerCount, updatedAt, versionId는 read-only이므로 제외
+      };
+      
       const response = await axios.put(
         `${this.baseUrl}/api/v1/workflows/${workflowId}`,
-        workflowData,
+        payload,
         { headers: this.getHeaders() }
       );
       return response.data;
     } catch (error) {
       if (error.response?.status === 401) {
         throw new Error('n8n API 인증 실패. N8N_API_KEY를 확인하세요.');
+      }
+      if (error.response?.status === 400) {
+        console.error('요청 데이터:', JSON.stringify(workflowData, null, 2));
+        console.error('에러 응답:', JSON.stringify(error.response.data, null, 2));
+        throw new Error(`잘못된 요청: ${JSON.stringify(error.response.data)}`);
       }
       throw error;
     }
@@ -172,10 +202,19 @@ class N8NWorkflowSetup {
     console.log(`\n워크플로우 ID: ${workflowId}`);
     console.log(`워크플로우 URL: ${this.baseUrl}/workflow/${workflowId}`);
     
-    // 워크플로우 활성화
-    console.log('\n워크플로우 활성화 중...');
-    await this.activateWorkflow(workflowId, true);
-    console.log('✅ 워크플로우 활성화 완료');
+    // 워크플로우 활성화 (선택사항 - 노드 타입 문제로 실패할 수 있음)
+    try {
+      console.log('\n워크플로우 활성화 시도 중...');
+      await this.activateWorkflow(workflowId, true);
+      console.log('✅ 워크플로우 활성화 완료');
+    } catch (error) {
+      console.warn('\n⚠️  워크플로우 활성화 실패 (수동으로 활성화 가능)');
+      console.warn(`   ${this.baseUrl}/workflow/${workflowId} 에서 워크플로우를 열고`);
+      console.warn('   오른쪽 상단의 "Inactive" 토글을 "Active"로 변경하세요.');
+      if (error.response?.data) {
+        console.warn('   에러:', JSON.stringify(error.response.data));
+      }
+    }
     
     return {
       workflowId,
@@ -200,6 +239,11 @@ if (require.main === module) {
     })
     .catch(error => {
       console.error('\n❌ 오류 발생:', error.message);
+      if (error.response) {
+        console.error('\n상세 에러 정보:');
+        console.error('Status:', error.response.status);
+        console.error('Data:', JSON.stringify(error.response.data, null, 2));
+      }
       if (!setup.apiKey) {
         console.error('\n💡 해결 방법:');
         console.error('1. n8n 웹 인터페이스에서 Settings > API로 이동');
@@ -208,6 +252,10 @@ if (require.main === module) {
         console.error('\n또는 n8n 웹 인터페이스에서 수동으로 워크플로우를 가져올 수 있습니다:');
         console.error('1. Workflows > Import from File');
         console.error(`2. workflows/${filename} 파일 선택`);
+      } else if (error.response?.status === 400) {
+        console.error('\n💡 400 에러 해결 방법:');
+        console.error('1. n8n 웹 인터페이스에서 수동으로 워크플로우를 가져오는 것을 권장합니다');
+        console.error('2. 또는 워크플로우 JSON 파일의 형식을 확인하세요');
       }
       process.exit(1);
     });
