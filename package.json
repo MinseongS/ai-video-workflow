@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node scripts/daily-video-generator.js",
     "test": "node scripts/test-apis.js",
-    "auth:youtube": "node scripts/youtube-auth-helper.js"
+    "auth:youtube": "node scripts/youtube-auth-helper.js",
+    "setup:n8n": "node scripts/setup-n8n-workflow.js"
   },
   "keywords": [
     "youtube",
