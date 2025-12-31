@@ -1,0 +1,51 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: daily-video-generator
+  namespace: ai-video
+  labels:
+    app: ai-video-workflow
+spec:
+  schedule: "0 0 * * *"  # 매일 자정 (UTC) = 오전 9시 (KST)
+  timeZone: "Asia/Seoul"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: ai-video-workflow
+        spec:
+          containers:
+            - name: ai-video-workflow
+              image: ghcr.io/minseongs/ai-video-workflow:latest
+              imagePullPolicy: IfNotPresent
+              envFrom:
+                - configMapRef:
+                    name: ai-video-config
+                - secretRef:
+                    name: ai-video-secrets
+              volumeMounts:
+                - name: output-storage
+                  mountPath: /app/output
+                - name: data-storage
+                  mountPath: /app/data
+              resources:
+                requests:
+                  memory: "512Mi"
+                  cpu: "250m"
+                limits:
+                  memory: "2Gi"
+                  cpu: "1000m"
+          imagePullSecrets:
+            - name: ghcr-secret
+          restartPolicy: OnFailure
+          volumes:
+            - name: output-storage
+              persistentVolumeClaim:
+                claimName: ai-video-output-pvc
+            - name: data-storage
+              persistentVolumeClaim:
+                claimName: ai-video-data-pvc

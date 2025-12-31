@@ -1,0 +1,184 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+LangGraph-based automation system that generates daily AI cooking video shorts featuring a raccoon character "넝심이" (Neung-sim-i) and uploads them to YouTube.
+
+**Tech Stack:** Python 3.11+, LangGraph, Google Gemini API, Google Veo3 API, YouTube API v3, PostgreSQL, SQLAlchemy (async), Docker/Kubernetes/Skaffold
+
+## Quick Start
+
+```bash
+# 1. Install dependencies
+uv sync --dev
+
+# 2. Configure API keys (interactive wizard)
+uv run python scripts/setup.py
+
+# 3. Initialize database
+uv run python scripts/init_db.py
+
+# 4. Run workflow
+uv run python main.py
+```
+
+## Commands
+
+```bash
+# Setup
+uv sync --dev                          # Install dependencies
+uv run python scripts/setup.py         # Configure API keys (generates .env and k8s/secrets.yaml)
+uv run python scripts/setup.py --check # Check current configuration
+
+# Linting and formatting
+uv run ruff check --fix .
+uv run ruff format .
+
+# Database
+uv run python scripts/init_db.py                     # Initialize tables
+uv run alembic revision --autogenerate -m "desc"     # Create migration
+uv run alembic upgrade head                          # Apply migrations
+
+# Run workflow
+uv run python main.py              # Auto-increment episode
+uv run python main.py 5            # Specific episode
+
+# CLI
+uv run python cli.py status        # Check project status
+uv run python cli.py generate      # Generate new episode
+uv run python cli.py history       # View episode history
+uv run python cli.py cleanup       # Dry-run cleanup
+uv run python cli.py init          # Initialize database
+
+# Tests
+uv run pytest
+
+# Docker
+docker build -t ai-video-workflow:latest .
+docker run --env-file .env ai-video-workflow:latest
+
+# Skaffold (Kubernetes)
+skaffold run -p prod               # Production (CronJob, daily 9am KST)
+skaffold run -p test               # E2E test (run once)
+skaffold dev                       # Development mode (file watch)
+```
+
+## Deployment (Skaffold)
+
+All resources are deployed to `ai-video` namespace.
+
+```bash
+# 1. Configure secrets
+uv run python scripts/setup.py     # Generates k8s/secrets.yaml
+
+# 2. Production deploy (build → push → deploy)
+skaffold run -p prod               # Deploys CronJob for daily 9am KST execution
+
+# 3. E2E test (run pipeline once)
+skaffold run -p test
+
+# 4. Manual trigger (in production)
+kubectl create job manual-$(date +%s) --from=cronjob/daily-video-generator -n ai-video
+
+# 5. Check status
+kubectl get all -n ai-video
+kubectl logs -f job/<job-name> -n ai-video
+```
+
+**Skaffold Profiles:**
+| Profile | Description |
+|---------|-------------|
+| (default) | Deployment for debugging |
+| `dev` | Auto-rebuild on file changes |
+| `prod` | CronJob for daily execution (9am KST) |
+| `test` | One-time Job for E2E testing |
+
+## Architecture
+
+### Agents (`src/agents/`)
+
+| Agent | Purpose |
+|-------|---------|
+| `StoryAgent` | Generates stories using Gemini API |
+| `VideoAgent` | Generates videos using Veo3 API |
+| `YouTubeAgent` | Uploads videos to YouTube |
+| `ProjectManagerAgent` | Project management (status, cleanup, migrations) |
+
+### Skills (`src/skills/`)
+
+Atomic operations that agents compose:
+- **Story:** `GenerateStorySkill`, `GetStoryHistorySkill`, `SaveStorySkill`
+- **Video:** `GenerateVideoSkill`, `MergeVideosSkill`, `SaveVideoGenerationSkill`
+- **YouTube:** `UploadVideoSkill`, `GetVideoInfoSkill`, `SaveYouTubeUploadSkill`
+- **Project:** `CheckProjectStatusSkill`, `RunWorkflowSkill`, `CleanupFilesSkill`
+
+### LangGraph Workflow (`src/workflow.py`)
+
+```
+load_history → generate_story → generate_videos → upload_to_youtube → save_history
+                    ↓                 ↓                  ↓
+                handle_error ←←←←←←←←←←←←←←←←←←←←←←←←←←←←
+```
+
+### Repository Pattern (`src/repository.py`)
+
+- `StoryRepository` - Story history CRUD
+- `VideoGenerationRepository` - Video generation tracking
+- `YouTubeUploadRepository` - Upload records
+- `WorkflowExecutionRepository` - Workflow audit trail
+
+## Database Schema
+
+| Table | Purpose |
+|-------|---------|
+| `story_history` | Generated stories with video_prompts, tags |
+| `video_generations` | Video creation status and paths |
+| `youtube_uploads` | YouTube video IDs and URLs |
+| `workflow_executions` | Execution audit trail |
+
+## Key Files
+
+```
+├── main.py                    # Entry point
+├── cli.py                     # CLI tool
+├── character/                 # 캐릭터 참조 이미지 (png/jpg/webp)
+├── skaffold.yaml              # Skaffold config
+├── Dockerfile                 # Multi-stage build with uv
+├── pyproject.toml             # Dependencies and ruff config
+├── k8s/                       # Kubernetes manifests (ai-video namespace)
+│   ├── namespace.yaml         # ai-video namespace
+│   ├── storage.yaml           # PV/PVC (external SSD)
+│   ├── configmap.yaml         # Non-secret config
+│   ├── secrets.yaml           # API keys (generated by setup.py)
+│   ├── postgres.yaml          # PostgreSQL
+│   ├── cronjob.yaml           # Production CronJob (daily 9am KST)
+│   └── test/                  # Test/debug resources
+│       ├── job.yaml           # E2E test (one-time run)
+│       └── deployment.yaml    # Debug deployment
+├── scripts/
+│   ├── setup.py               # API key setup wizard
+│   └── init_db.py             # Database initialization
+└── src/
+    ├── agents/                # Agent implementations
+    ├── skills/                # Skill implementations
+    ├── workflow.py            # LangGraph workflow
+    ├── config.py              # Settings (Pydantic)
+    ├── models.py              # Pydantic models
+    ├── db_models.py           # SQLAlchemy models
+    └── repository.py          # Data access layer
+```
+
+## Storage
+
+Videos are stored on external SSD via hostPath PV:
+- **output**: `/media/minseong/PortableSSD1/ai-video-output`
+- **data**: `/media/minseong/PortableSSD1/ai-video-data`
+
+## Notes
+
+- **Veo3 API** may not be publicly available; code has mock fallback
+- **ffmpeg** is required for video merging (included in Docker image)
+- **캐릭터 참조 이미지**: `character/` 디렉토리에 png/jpg/webp 이미지를 넣으면 Veo3 영상 생성 시 참조됨
+- Run `uv run python scripts/setup.py --check` to verify API key configuration

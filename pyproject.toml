@@ -1,0 +1,93 @@
+[project]
+name = "ai-video-workflow"
+version = "0.1.0"
+description = "LangGraph-based automation system for generating AI cooking video shorts"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    # LangChain & LangGraph
+    "langchain>=0.1.0",
+    "langchain-google-genai>=1.0.0",
+    "langgraph>=0.0.20",
+    "langchain-core>=0.1.0",
+    # Google APIs
+    "google-genai>=1.0.0",
+    "google-api-python-client>=2.100.0",
+    "google-auth-httplib2>=0.1.1",
+    "google-auth-oauthlib>=1.1.0",
+    # HTTP requests
+    "httpx>=0.25.0",
+    "aiohttp>=3.9.0",
+    # Video processing
+    "ffmpeg-python>=0.2.0",
+    # Database
+    "sqlalchemy>=2.0.0",
+    "asyncpg>=0.29.0",
+    "alembic>=1.13.0",
+    "psycopg2-binary>=2.9.9",
+    "greenlet>=3.0.0",
+    # Environment & Config
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    # Utilities
+    "typing-extensions>=4.8.0",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # do not perform function calls in argument defaults
+    "B905",   # zip without strict=
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+
+[tool.ruff.lint.per-file-ignores]
+"main.py" = ["E402"]
+"cli.py" = ["E402"]
+"scripts/*.py" = ["E402"]
+"alembic/env.py" = ["E402"]
+"src/*.py" = ["ARG002"]
+"src/agents/*.py" = ["ARG002"]
+"src/skills/*.py" = ["ARG002"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "ruff>=0.14.10",
+]

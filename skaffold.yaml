@@ -1,0 +1,77 @@
+apiVersion: skaffold/v4beta11
+kind: Config
+metadata:
+  name: ai-video-workflow
+
+build:
+  artifacts:
+    - image: ghcr.io/minseongs/ai-video-workflow
+      docker:
+        dockerfile: Dockerfile
+  local:
+    push: true
+    useBuildkit: true
+
+manifests:
+  rawYaml:
+    - k8s/namespace.yaml
+    - k8s/storage.yaml
+    - k8s/configmap.yaml
+    - k8s/secrets.yaml
+    - k8s/postgres.yaml
+    - k8s/test/deployment.yaml
+
+deploy:
+  kubectl: {}
+
+portForward:
+  - resourceType: service
+    resourceName: postgres-service
+    namespace: ai-video
+    port: 5432
+    localPort: 5432
+
+profiles:
+  # Local development (with file watch)
+  - name: dev
+    activation:
+      - command: dev
+    build:
+      local:
+        push: true
+    manifests:
+      rawYaml:
+        - k8s/namespace.yaml
+        - k8s/storage.yaml
+        - k8s/configmap.yaml
+        - k8s/secrets.yaml
+        - k8s/postgres.yaml
+        - k8s/test/deployment.yaml
+
+  # Production with CronJob (daily 9am KST)
+  - name: prod
+    build:
+      local:
+        push: true
+    manifests:
+      rawYaml:
+        - k8s/namespace.yaml
+        - k8s/storage.yaml
+        - k8s/configmap.yaml
+        - k8s/secrets.yaml
+        - k8s/postgres.yaml
+        - k8s/cronjob.yaml
+
+  # E2E test (run once)
+  - name: test
+    build:
+      local:
+        push: true
+    manifests:
+      rawYaml:
+        - k8s/namespace.yaml
+        - k8s/storage.yaml
+        - k8s/configmap.yaml
+        - k8s/secrets.yaml
+        - k8s/postgres.yaml
+        - k8s/test/job.yaml

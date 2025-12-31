@@ -1,180 +1,268 @@
-# AI YouTube 쇼츠 자동 생성 시스템
+# AI YouTube Shorts 자동 생성 시스템
 
-라쿤 캐릭터 "넝심이"의 요리 쇼츠 영상을 매일 자동으로 생성하고 YouTube에 업로드하는 n8n 워크플로우 시스템입니다.
+라쿤 캐릭터 "넝심이"의 요리 쇼츠 영상을 매일 자동으로 생성하고 YouTube에 업로드하는 LangGraph 기반 자동화 시스템입니다.
 
 ## 주요 기능
 
-- 🤖 **AI 스토리 생성**: Gemini API를 사용하여 일관된 캐릭터와 스토리로 요리 영상 스토리 생성
-- 🎬 **AI 영상 생성**: Google Veo3를 사용하여 요리 영상 생성
-- 📺 **자동 업로드**: YouTube API를 통해 쇼츠 영상 자동 업로드
-- 📅 **일일 자동화**: n8n 스케줄러를 통해 매일 자동 실행
-- 🎭 **캐릭터 일관성**: 주인공과 조연 캐릭터의 일관된 유지
+- **AI 스토리 생성** - Gemini API를 사용한 일관된 캐릭터 스토리
+- **AI 영상 생성** - Google Veo3를 사용한 요리 영상 생성
+- **자동 업로드** - YouTube API를 통한 쇼츠 자동 업로드
+- **LangGraph 워크플로우** - 상태 기반 에이전트 자동화
+- **Kubernetes 배포** - Skaffold를 통한 간편한 배포
 
-## 프로젝트 구조
+## 기술 스택
 
-```
-ai-youtube/
-├── scripts/
-│   ├── gemini-story-generator.js    # Gemini API 스토리 생성
-│   ├── veo3-video-generator.js      # Veo3 영상 생성
-│   ├── youtube-uploader.js          # YouTube 업로드
-│   ├── daily-video-generator.js     # 전체 프로세스 통합
-│   └── merge-videos.js              # 영상 세그먼트 합치기
-├── workflows/
-│   └── daily-youtube-shorts.json    # n8n 워크플로우
-├── data/
-│   └── story-history.json           # 스토리 히스토리 (자동 생성)
-├── output/
-│   └── videos/                       # 생성된 영상 파일
-├── package.json
-├── env.example
-└── README.md
-```
+Python 3.11+ | LangGraph | Gemini API | Veo3 API | YouTube API v3 | PostgreSQL | SQLAlchemy (async) | Docker | Kubernetes | Skaffold
 
-## 설치 및 설정
+---
+
+## 빠른 시작
 
 ### 1. 의존성 설치
 
 ```bash
-npm install
+uv sync --dev
 ```
 
-### 2. 환경 변수 설정
-
-`env.example` 파일을 참고하여 `.env` 파일을 생성하고 필요한 API 키를 설정하세요:
+### 2. API 키 설정
 
 ```bash
-cp env.example .env
+uv run python scripts/setup.py
 ```
 
-필수 환경 변수:
-- `GEMINI_API_KEY`: Google Gemini API 키
-- `VEO3_API_KEY`: Google Veo3 API 키
-- `VEO3_PROJECT_ID`: Google Cloud 프로젝트 ID
-- `YOUTUBE_CLIENT_ID`: YouTube API 클라이언트 ID
-- `YOUTUBE_CLIENT_SECRET`: YouTube API 클라이언트 시크릿
-- `YOUTUBE_REFRESH_TOKEN`: YouTube API 리프레시 토큰
-- `YOUTUBE_CHANNEL_ID`: YouTube 채널 ID
+대화형 마법사가 실행되며 `.env` 파일과 `k8s/secrets.yaml`이 자동 생성됩니다.
 
-### 3. YouTube API 인증 설정
-
-1. [Google Cloud Console](https://console.cloud.google.com/)에서 프로젝트 생성
-2. YouTube Data API v3 활성화
-3. OAuth 2.0 클라이언트 ID 생성
-4. 인증 URL 생성 및 토큰 획득:
-
-```javascript
-const YouTubeUploader = require('./scripts/youtube-uploader');
-const uploader = new YouTubeUploader();
-
-// 인증 URL 출력
-console.log(uploader.getAuthUrl());
-
-// 브라우저에서 URL 접속 후 인증 코드를 받아서:
-// uploader.getTokensFromCode('인증코드').then(tokens => console.log(tokens));
-```
-
-### 4. n8n 설정
-
-#### n8n 설치 (Docker 권장)
+### 3. 데이터베이스 초기화
 
 ```bash
-docker run -it --rm \
-  --name n8n \
-  -p 5678:5678 \
-  -v ~/.n8n:/home/node/.n8n \
-  n8nio/n8n
+uv run python scripts/init_db.py
 ```
 
-#### 워크플로우 가져오기
-
-1. n8n 웹 인터페이스 접속 (http://localhost:5678)
-2. 워크플로우 메뉴에서 "Import from File" 선택
-3. `workflows/daily-youtube-shorts.json` 파일 업로드
-4. 필요한 크리덴셜 설정:
-   - Gemini API 크리덴셜
-   - YouTube OAuth2 API 크리덴셜
-   - Veo3 API 키 (환경 변수로 설정)
-
-#### 크리덴셜 설정
-
-**Gemini API:**
-- Credential Type: Google Gemini API
-- API Key: `GEMINI_API_KEY` 값 입력
-
-**YouTube API:**
-- Credential Type: YouTube OAuth2 API
-- Client ID, Client Secret, Refresh Token 입력
-
-## 사용 방법
-
-### 방법 1: n8n 워크플로우 사용 (권장)
-
-1. n8n에서 워크플로우 활성화
-2. 스케줄러가 매일 오전 9시에 자동 실행
-3. 수동 실행도 가능 (워크플로우에서 "Execute Workflow" 클릭)
-
-### 방법 2: 스크립트 직접 실행
+### 4. 워크플로우 실행
 
 ```bash
-node scripts/daily-video-generator.js
+uv run python main.py              # 자동 에피소드 번호
+uv run python main.py 5            # 특정 에피소드
+uv run python main.py --private    # 비공개로 업로드
 ```
 
-## 워크플로우 프로세스
+---
 
-1. **스토리 히스토리 로드**: 이전 에피소드 정보 로드
-2. **스토리 생성**: Gemini API로 새로운 스토리 생성
-3. **영상 생성**: Veo3 API로 여러 세그먼트 영상 생성
-4. **영상 합치기**: 생성된 세그먼트들을 하나로 합치기
-5. **YouTube 업로드**: 완성된 영상을 YouTube에 업로드
-6. **히스토리 저장**: 스토리 정보를 히스토리에 저장
+## CLI 명령어
 
-## 캐릭터 설정
+```bash
+uv run python cli.py status        # 프로젝트 상태 확인
+uv run python cli.py generate      # 새 에피소드 생성
+uv run python cli.py history       # 에피소드 히스토리 조회
+uv run python cli.py cleanup       # 오래된 파일 정리 (dry-run)
+uv run python cli.py init          # 데이터베이스 초기화
+```
 
-캐릭터 정보는 환경 변수로 설정할 수 있습니다:
+---
 
-- `MAIN_CHARACTER_NAME`: 주인공 이름 (기본값: "넝심이")
-- `MAIN_CHARACTER_DESCRIPTION`: 주인공 설명
-- `SUPPORTING_CHARACTER_NAME`: 조연 이름
-- `SUPPORTING_CHARACTER_DESCRIPTION`: 조연 설명
+## 배포
 
-## 스토리 히스토리
+### Docker (로컬 테스트)
 
-생성된 스토리는 `data/story-history.json`에 저장되어 다음 에피소드 생성 시 참조됩니다. 이를 통해 캐릭터의 일관성과 스토리의 연속성을 유지합니다.
+```bash
+docker build -t ai-video-workflow:latest .
+docker run --env-file .env ai-video-workflow:latest
+```
+
+### Kubernetes (Skaffold)
+
+#### 사전 요구사항
+
+- Kubernetes 클러스터 (v1.20+)
+- kubectl 설정 완료
+- Skaffold 설치
+- ghcr.io 로그인 (`docker login ghcr.io`)
+
+#### 운영 배포
+
+```bash
+# 1. API 키 설정 (k8s/secrets.yaml 자동 생성)
+uv run python scripts/setup.py
+
+# 2. 운영 배포 (빌드 → 푸시 → 배포)
+skaffold run -p prod
+```
+
+매일 오전 9시(KST)에 자동으로 파이프라인이 실행됩니다.
+
+#### E2E 테스트 (1회 실행)
+
+```bash
+skaffold run -p test
+```
+
+전체 파이프라인을 한 번 실행하여 영상 생성 및 업로드를 테스트합니다.
+
+#### Skaffold 프로필
+
+| 프로필 | 설명 | 사용 시점 |
+|--------|------|----------|
+| `(기본)` | Deployment | 디버깅 |
+| `dev` | 파일 변경 시 자동 리빌드 | 개발 |
+| `prod` | CronJob (매일 9시 KST) | **운영** |
+| `test` | 일회성 Job | **E2E 테스트** |
+
+```bash
+skaffold run -p prod              # 운영 배포
+skaffold run -p test              # E2E 테스트 (1회 실행)
+skaffold dev                      # 개발 모드 (파일 감시)
+```
+
+#### 네임스페이스
+
+모든 리소스는 `ai-video` 네임스페이스에 배포됩니다.
+
+```bash
+kubectl get all -n ai-video       # 리소스 확인
+kubectl logs -f job/<job-name> -n ai-video  # 로그 확인
+```
+
+#### 수동 실행 (운영 환경에서)
+
+```bash
+kubectl create job manual-$(date +%s) --from=cronjob/daily-video-generator -n ai-video
+```
+
+#### 스토리지
+
+영상은 노드의 외장 SSD에 저장됩니다:
+- **output**: `/media/minseong/PortableSSD1/ai-video-output`
+- **data**: `/media/minseong/PortableSSD1/ai-video-data`
+
+---
+
+## 아키텍처
+
+### 워크플로우
+
+```
+load_history → generate_story → generate_videos → upload_to_youtube → save_history
+                    ↓                 ↓                  ↓
+                handle_error ←←←←←←←←←←←←←←←←←←←←←←←←←←←←
+```
+
+### Agents
+
+| Agent | 역할 |
+|-------|------|
+| `StoryAgent` | Gemini API로 스토리 생성 |
+| `VideoAgent` | Veo3 API로 영상 생성 |
+| `YouTubeAgent` | YouTube 업로드 |
+| `ProjectManagerAgent` | 프로젝트 관리 |
+
+### Skills
+
+Agents가 조합하여 사용하는 원자적 작업:
+
+- **Story**: `GenerateStorySkill`, `GetStoryHistorySkill`, `SaveStorySkill`
+- **Video**: `GenerateVideoSkill`, `MergeVideosSkill`, `SaveVideoGenerationSkill`
+- **YouTube**: `UploadVideoSkill`, `GetVideoInfoSkill`, `SaveYouTubeUploadSkill`
+- **Project**: `CheckProjectStatusSkill`, `RunWorkflowSkill`, `CleanupFilesSkill`
+
+### 데이터베이스 스키마
+
+| 테이블 | 용도 |
+|--------|------|
+| `story_history` | 생성된 스토리, 프롬프트, 태그 |
+| `video_generations` | 영상 생성 상태 및 경로 |
+| `youtube_uploads` | YouTube 비디오 ID, URL |
+| `workflow_executions` | 워크플로우 실행 기록 |
+
+---
+
+## 프로젝트 구조
+
+```
+├── main.py                    # 엔트리 포인트
+├── cli.py                     # CLI 도구
+├── pyproject.toml             # 의존성 및 설정
+├── Dockerfile                 # 멀티스테이지 빌드
+├── skaffold.yaml              # Skaffold 설정
+│
+├── k8s/                       # Kubernetes 매니페스트 (운영)
+│   ├── namespace.yaml         # ai-video 네임스페이스
+│   ├── configmap.yaml         # 설정값
+│   ├── secrets.yaml           # 시크릿 (setup.py로 생성)
+│   ├── storage.yaml           # PV/PVC (외장 SSD)
+│   ├── postgres.yaml          # PostgreSQL
+│   ├── cronjob.yaml           # 운영 CronJob (매일 9시)
+│   └── test/                  # 테스트/디버깅용
+│       ├── job.yaml           # E2E 테스트 (1회 실행)
+│       └── deployment.yaml    # 디버깅용 Deployment
+│
+├── scripts/
+│   ├── setup.py               # API 키 설정 마법사
+│   └── init_db.py             # DB 초기화
+│
+└── src/
+    ├── agents/                # Agent 구현
+    ├── skills/                # Skill 구현
+    ├── workflow.py            # LangGraph 워크플로우
+    ├── config.py              # 설정 (Pydantic)
+    ├── models.py              # Pydantic 모델
+    ├── db_models.py           # SQLAlchemy 모델
+    └── repository.py          # 데이터 접근 계층
+```
+
+---
+
+## 환경 변수
+
+```bash
+# Google API (Gemini + Veo3)
+GOOGLE_API_KEY=your_google_api_key
+
+# YouTube API
+YOUTUBE_CLIENT_ID=your_youtube_client_id
+YOUTUBE_CLIENT_SECRET=your_youtube_client_secret
+YOUTUBE_REFRESH_TOKEN=your_youtube_refresh_token
+
+# PostgreSQL
+DB_PASSWORD=your_db_password
+```
+
+`scripts/setup.py` 실행 시 대화형으로 설정 가능합니다.
+
+---
+
+## 개발
+
+### 코드 스타일
+
+```bash
+uv run ruff check --fix .      # 린팅
+uv run ruff format .           # 포맷팅
+```
+
+### 테스트
+
+```bash
+uv run pytest
+```
+
+### 데이터베이스 마이그레이션
+
+```bash
+uv run alembic revision --autogenerate -m "설명"
+uv run alembic upgrade head
+```
+
+---
 
 ## 주의사항
 
-1. **Veo3 API**: Veo3 API가 아직 공개되지 않았을 수 있습니다. 실제 API 스펙에 맞게 코드를 수정해야 할 수 있습니다.
+- **Veo3 API**: 공개 API가 아닐 수 있음 (mock fallback 포함)
+- **ffmpeg**: 영상 병합에 필요 (Docker 이미지에 포함)
+- **API 비용**: Gemini/Veo3 API 사용량 모니터링 필요
+- **YouTube 할당량**: 일일 업로드 제한 확인
 
-2. **ffmpeg**: 영상 합치기를 위해 ffmpeg가 설치되어 있어야 합니다:
-   ```bash
-   # macOS
-   brew install ffmpeg
-   
-   # Ubuntu/Debian
-   sudo apt-get install ffmpeg
-   ```
-
-3. **API 비용**: Gemini API와 Veo3 API 사용 시 비용이 발생할 수 있습니다. 사용량을 모니터링하세요.
-
-4. **YouTube 할당량**: YouTube API는 일일 할당량이 있습니다. 여러 영상을 업로드할 경우 할당량을 확인하세요.
-
-## 문제 해결
-
-### 영상 생성 실패
-- Veo3 API 키와 프로젝트 ID가 올바른지 확인
-- API 할당량 확인
-
-### YouTube 업로드 실패
-- OAuth 토큰이 만료되지 않았는지 확인
-- YouTube API 할당량 확인
-- 영상 파일 크기 및 형식 확인 (최대 128GB, 지원 형식: MP4, MOV, AVI 등)
-
-### 스토리 일관성 문제
-- `data/story-history.json` 파일 확인
-- 히스토리가 제대로 로드되고 있는지 확인
+---
 
 ## 라이선스
 
 MIT
-

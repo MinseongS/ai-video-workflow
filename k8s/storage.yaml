@@ -1,0 +1,61 @@
+# PersistentVolume for video output (hostPath on external SSD)
+# Note: PV is cluster-scoped, no namespace needed
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: ai-video-output-pv
+spec:
+  capacity:
+    storage: 50Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  hostPath:
+    path: /media/minseong/PortableSSD1/ai-video-output
+    type: DirectoryOrCreate
+---
+# PersistentVolume for data (hostPath on external SSD)
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: ai-video-data-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  hostPath:
+    path: /media/minseong/PortableSSD1/ai-video-data
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ai-video-output-pvc
+  namespace: ai-video
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""
+  volumeName: ai-video-output-pv
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ai-video-data-pvc
+  namespace: ai-video
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""
+  volumeName: ai-video-data-pv
+  resources:
+    requests:
+      storage: 10Gi
+

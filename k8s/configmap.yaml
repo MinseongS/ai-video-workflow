@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-video-config
+  namespace: ai-video
+data:
+  DB_USER: "postgres"
+  DB_HOST: "postgres-service"
+  DB_PORT: "5432"
+  DB_NAME: "ai_video_workflow"
+  MAIN_CHARACTER_NAME: "넝심이"
+  MAIN_CHARACTER_DESCRIPTION: "살짝 너구리 같은 귀여운 라쿤 캐릭터, 요리를 좋아함"
+  SUPPORTING_CHARACTER_NAME: "친구"
+  SUPPORTING_CHARACTER_DESCRIPTION: "넝심이의 친구"
